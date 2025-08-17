@@ -1,13 +1,14 @@
 samples: ["SRR17138565","SRR17138627","SRR17138630","SRR17138637","SRR17138638", "SRR17138639","SRR17138640"]
 in_path: "./data"
-flank_file: "./lib/fmr1_flanks.fa"
-ref_path: "./lib/hg38_chrXY.fna"
 out_path: "./results"
-iterations: 1 #3, racon 迭代次数
 
 threads:
   normal: 16
   high: 60
+
+flank_file: "./lib/fmr1_flanks.fa"
+ref_path: "./lib/hg38_chrXY.fna"
+iterations: 1 #3, racon 迭代次数
 
 # FMR1 区域
 chr: "NC_000023.11"

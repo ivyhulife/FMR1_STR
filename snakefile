@@ -42,9 +42,9 @@ rule qc:
     threads: THREADS["high"]
     shell:
         """
-        /ifs1/Software/miniconda3/envs/nanoplot/bin/NanoPlot -t {threads} --fastq {input.r1} -o {output.raw_qc}
+        conda run -n nanoplot NanoPlot -t {threads} --fastq {input.r1} -o {output.raw_qc}
         filtlong --min_length 100 --min_mean_q 80 {input.r1} |  gzip > {output.r1} 
-        /ifs1/Software/miniconda3/envs/nanoplot/bin/NanoPlot -t {threads} --fastq {output.r1} -o {output.clean_qc}
+        conda run -n nanoplot NanoPlot -t {threads} --fastq {output.r1} -o {output.clean_qc}
         """
 
 rule mapping:
@@ -187,7 +187,7 @@ rule str_count:
         no="{sample}_{hap}"
     shell:
         r"""
-        python STR.py --bam {input.bam} --contig {input.allele} --sample {params.no} --out_dir {params.out_dir} 
+        python ./lib/STR.py --bam {input.bam} --contig {input.allele} --sample {params.no} --out_dir {params.out_dir} 
         """
 
 rule merge:

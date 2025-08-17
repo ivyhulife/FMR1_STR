@@ -4,9 +4,9 @@
 - author        Hu Qiaoli  
 
 ## 1. Introduction
-The **FMR1_STR pipeline** is designed to analyze **FMR1 gene 5’UTR CGG repeat expansions** associated with **Fragile X Syndrome** using **Nanopore Technology long reads**.  
+The **FMR1_STR pipeline** is designed to analyze **FMR1 gene 5’UTR CGG repeat expansions** which are associated with **Fragile X Syndrome(FXS)** using **Nanopore Technology long reads**.  
 
-The pipeline integrates **quality control, mapping, target region assembly, haplotype-specific phasing, and STR repeat counting**.  This allows for accurate detection of repeat length, motif interruptions, and allele-specific haplotypes.  
+The pipeline integrates **quality control, mapping, target region extraction and de novo assembly, phasing of haplotype, STR repeat counting and Summary report generation**.  This allows for accurate detection of repeat length, motif interruptions, and allele-specific haplotypes.  
 
 **Pipeline repository:**
 ```bash
@@ -14,70 +14,75 @@ git clone https://github.com/ivyhulife/FMR1_STR.git
 ```
 
 ## 2. Requirements
-**Docker**
 
-We recommend running this pipeline inside a docker or Apptainer container.
-Our docker image contains the following bioinformatics tools :
+We recommend running this pipeline inside a **docker** or **Apptainer** container for full reproducibility. The pre-built Docker image includes the following tools:
+| Tool          | Version      | Purpose                                    |
+| ------------- | ------------ | ------------------------------------------ |
+| **NanoPlot**  | 1.32.0       | QC visualization of Nanopore reads         |
+| **bedtools**  | 2.31.1      | Read extraction from genomic regions       |
+| **filtlong**  | 0.2.1       | Filtering of Nanopore reads                |
+| **flye**      | 2.9.3-b1797 | De novo assembly of STR region             |
+| **longshot**  | 1.0.0       | SNV-based haplotype phasing                |
+| **minimap2**  | 2.30-r1287    | Long-read mapping                          |
+| **quast**     | 5.3.0         | Assembly quality assessment                |
+| **racon**     | 1.5.0       | Contig polishing                           |
+| **samtools**  | 1.21        | Alignment manipulation                     |
+| **snakemake** | 7.32.4        | Workflow management                        |
+| **Python3**   | 3.10.16      | Workflow scripts (numpy, pandas, argparse) |
 
-1. NanoPlot (QC visualization)
-2. bedtools (region extraction)
-3. filtlong (read filtering )
-4. flye (de novo assembly of STR region)
-5. longshot (SNV-based haplotype phasing)
-6. minimap2 (long-read mapping)
-7. quast (assembly QC)
-8. racon (contig polishing)
-9. samtools (alignment handling)
-10. snakemake (pipeline execution engine)
-11. Python3 (v3.10.16) is bundled with the following packages:
-    1. numpy
-    2. pandas
-    3. argparse
-
-## 3. Script Structure
+## 3. Script Directory Structure
 ```
-./FMR1_STR/
-├── config.yaml                 ## snakemake config file
-├── Dockerfile                  ## Dockerfile for docker image
-├── lib/                        ## 
-│   ├── STR.py                  ## STR repeat annotation script
-│   ├── hg38_chrXY.*            ## reference  (hg38 chrX subset)
-│   ├── fmr1_flanks.fa          ## FMR1 STR flanking sequences
-└── run.py                      ## main entry of the 
-├── readme.md
-├── snakefile                   ## snakemake file
-└── workflow.pngs
+FMR1_STR/
+├── config.yaml                 # Global configuration for Snakemake
+├── Dockerfile                  # Docker image definition
+├── lib/                        
+│   ├── STR.py                  # STR repeat detection and annotation
+│   ├── hg38_chrXY.*            # Reference (hg38 chromosome X subset)
+│   ├── fmr1_flanks.fa          # Flanking sequences for STR localization
+├── snakefile                   # Snakemake pipeline definition
+├── readme.md                   # Project documentation
+└── workflow.png                # Workflow schematic
 ```
 
 ## 4. Usage
-Run the pipeline via the provided shell script (example):
+1. Edit config.yaml before running the pipeline:
+```yaml
+samples: ["sample1", "sample2"]   # List of sample IDs
+in_path: "./raw_reads/"           # Directory containing input FASTQ files
+out_path: "./output/"             # Output directory     
+threads:
+  normal: 16                      #  recommended for small or lightweight steps
+  high: 60                        # recommended for computationally intensive step
+
 ```
-snakemake -np                   ## dry-run 
-snakemake -j ${core_num} -p 
+2. Running the Pipeline via snakemeke :
 ```
-docker run -idtv /gpfsvol1/P_BIOINFO/USER/huql/:/gpfsvol1/P_BIOINFO/USER/huql/ --name=${name} registry.servicemgr.gendow:5000/huql/meta:v2 /bin/bash
+snakemake -np                   ## Dry-run (no execution, check DAG)
+snakemake -j ${core_num} -p     ## Full execution
 
+# Run inside Docker
+docker build -t fmr1_str:latest .
+docker run -itv $(pwd):/data fmr1_str:latest  snakemake -np 
+docker run -itv $(pwd):/data fmr1_str:latest  snakemake -j ${core_num} -p 
+```
 
-Input Files
--in : FASTQ directory containing raw nanopore reads
-
-## 5. Output Directory
+## 5. Output Directory Structure
 ```
 ./output/
-├── 01.QC/             ### Raw and filtered reads QC
-├── 02.Mapping/        ### Reads mapped to reference
-├── 03.Target/         ### Reads aligned to FMR1 region
-├── 04.Assembly/       ### De novo assembly of STR region
-├── 05.Cor/            ### Polished contig
-├── 06.Alle/           ### Haplotype contigs after phasing
-├── 07.Summary/        ### STR size, motif, and summary statistics
-├── FMR1.bed           ### STR locus BED file
+├── 01.QC/             # QC reports for raw and filtered reads
+├── 02.Mapping/        # Reads mapped to reference (hg38 subset)
+├── 03.Target/         # Extracted reads covering the FMR1 locus
+├── 04.Assembly/       # De novo assembly of STR region
+├── 05.Cor/            # Polished contig
+├── 06.Alle/           # Haplotype-specific contigs after phasing
+├── 07.Summary/        # STR size, motif structure, summary statistics
+└── FMR1.bed           # STR locus coordinates
 ```
 
 ## 6. Notes
-- For reproducibility, always run inside Docker/Apptainer.
+- Always run the pipeline inside Docker/Apptainer for reproducibility.
 
-- The pipeline is modular: each step can be re-run independently.
+- The workflow is modular: each step can be executed independently by specifying the rule name in Snakemake.
 
 - Multi-sample runs can be managed by Snakemake batch mode.
 
