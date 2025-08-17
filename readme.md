@@ -10,7 +10,7 @@ The pipeline integrates **quality control, mapping, target region assembly, hapl
 
 **Pipeline repository:**
 ```bash
-git clone https://github.com/<YourRepo>/FMR1_STR.git
+git clone https://github.com/ivyhulife/FMR1_STR.git
 ```
 
 ## 2. Requirements
@@ -43,7 +43,6 @@ Our docker image contains the following bioinformatics tools :
 │   ├── STR.py                  ## STR repeat annotation script
 │   ├── hg38_chrXY.*            ## reference  (hg38 chrX subset)
 │   ├── fmr1_flanks.fa          ## FMR1 STR flanking sequences
-├── readme.txt                  ## documentation
 └── run.py                      ## main entry of the 
 ├── readme.md
 ├── snakefile                   ## snakemake file
@@ -62,7 +61,6 @@ docker run -idtv /gpfsvol1/P_BIOINFO/USER/huql/:/gpfsvol1/P_BIOINFO/USER/huql/ -
 Input Files
 -in : FASTQ directory containing raw nanopore reads
 
-
 ## 5. Output Directory
 ```
 ./output/
@@ -72,16 +70,14 @@ Input Files
 ├── 04.Assembly/       ### De novo assembly of STR region
 ├── 05.Cor/            ### Polished contig
 ├── 06.Alle/           ### Haplotype contigs after phasing
+├── 07.Summary/        ### STR size, motif, and summary statistics
 ├── FMR1.bed           ### STR locus BED file
-└── report.txt         ### STR size, motif, and summary statistics
 ```
 
 ## 6. Notes
 - For reproducibility, always run inside Docker/Apptainer.
 
 - The pipeline is modular: each step can be re-run independently.
-
-- Downstream manual inspection (IGV + TRF reports) is recommended for final confirmation.
 
 - Multi-sample runs can be managed by Snakemake batch mode.
 

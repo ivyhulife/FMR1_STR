@@ -3,21 +3,25 @@ import os
 import pandas as pd
 
 configfile: "config.yaml"
+
 IN_PATH = config["in_path"]
 OUT_PATH = config["out_path"]
 THREADS = config["threads"]
 SAMPLES=config["samples"]
 ITER = config["iterations"]
-# SAMPLES= [os.path.basename(f).replace(".fastq.gz","") for f in glob.glob(os.path.join(IN_PATH,"*.fastq.gz"))]
+
 HAPS = [1, 2]
 
 rule all:
     input:
         # expand(os.path.join(OUT_PATH,"02.Mapping/{sample}/{sample}.bam"), sample=SAMPLES),
         # expand(os.path.join(OUT_PATH,"03.Target/{sample}/{sample}_FMR1.bam"), sample=SAMPLES),
-        expand(os.path.join(OUT_PATH,"04.assembly/{sample}/flye/assembly.fasta"), sample=SAMPLES),
-        expand(os.path.join(OUT_PATH,"05.Cor/{sample}/racon_round{round}.fasta"),round=[ITER], sample=SAMPLES),
-        expand(os.path.join(OUT_PATH,"06.Alle/{sample}/{sample}.allele{hap}.fa"),sample=SAMPLES,hap=HAPS),
+        # expand(os.path.join(OUT_PATH,"04.Assembly/{sample}/flye/assembly.fasta"), sample=SAMPLES),
+        # expand(os.path.join(OUT_PATH,"05.Cor/{sample}/racon_round{round}.fasta"),round=[ITER], sample=SAMPLES),
+        expand(os.path.join(OUT_PATH,"05.Cor/{sample}/quast_round{round}"),round=[ITER], sample=SAMPLES),
+        # expand(os.path.join(OUT_PATH,"06.Alle/{sample}/{sample}.allele{hap}.bam"),sample=SAMPLES,hap=HAPS),
+        os.path.join(OUT_PATH,"07.Summary/STR_summary.tsv"),
+
 
 rule create_bed:
     output:
@@ -43,7 +47,7 @@ rule qc:
         /ifs1/Software/miniconda3/envs/nanoplot/bin/NanoPlot -t {threads} --fastq {output.r1} -o {output.clean_qc}
         """
 
-rule minimap2:
+rule mapping:
     input:
         r1=os.path.join(OUT_PATH,"01.QC/{sample}/{sample}.clean.fastq.gz"),
         ref_file=config["ref_path"]
@@ -56,7 +60,7 @@ rule minimap2:
         samtools index -@ {threads} {output.bam}
         """
 
-rule target:
+rule extract_region:
     input:
         bam=os.path.join(OUT_PATH,"02.Mapping/{sample}/{sample}.bam"),
         bed_file = os.path.join(OUT_PATH,"FMR1.bed")
@@ -79,18 +83,18 @@ rule assembly:
     input:
         r1=os.path.join(OUT_PATH,"03.Target/{sample}/{sample}_FMR1.fq"),
     output:
-        out_dir=directory(os.path.join(OUT_PATH,"04.assembly/{sample}/flye")),
-        out_contig=os.path.join(OUT_PATH,"04.assembly/{sample}/flye/assembly.fasta"),
+        out_dir=directory(os.path.join(OUT_PATH,"04.Assembly/{sample}/flye")),
+        out_contig=os.path.join(OUT_PATH,"04.Assembly/{sample}/flye/assembly.fasta"),
     threads: THREADS["high"]
     shell:
         """
         flye --nano-raw {input.r1} --genome-size 100k --threads {threads} --out-dir {output.out_dir}
         """
 
-rule polish1:
+rule polish:
     input:
         r1=os.path.join(OUT_PATH,"01.QC/{sample}/{sample}.clean.fastq.gz"),
-        ref=lambda w: os.path.join(OUT_PATH,f"05.Cor/{w.sample}/racon_round{int(w.round)-1}.fasta") if int(w.round) > 1 else os.path.join(OUT_PATH,f"04.assembly/{w.sample}/flye/assembly.fasta"),
+        ref=lambda w: os.path.join(OUT_PATH,f"05.Cor/{w.sample}/racon_round{int(w.round)-1}.fasta") if int(w.round) > 1 else os.path.join(OUT_PATH,f"04.Assembly/{w.sample}/flye/assembly.fasta"),
     output:
         paf=os.path.join(OUT_PATH,"05.Cor/{sample}/minimap2_round{round}.paf"),
         fasta=os.path.join(OUT_PATH,"05.Cor/{sample}/racon_round{round}.fasta"),
@@ -101,36 +105,22 @@ rule polish1:
         racon -t {threads} {input.r1} {output.paf} {input.ref} > {output.fasta}
         """
 
-# # ========== MEDAKA ==========
-# rule medaka:
-#     input:
-#         r1=os.path.join(OUT_PATH,"01.QC/{sample}/{sample}.clean.fastq.gz"),
-#         ref=os.path.join(OUT_PATH,"05.Cor/{sample}/racon_round{ITER}.fasta")
-#     output:
-#         out_dir=directory(os.path.join(OUT_PATH,"05.Cor/{sample}"))
-#         consensus=os.path.join(OUT_PATH,"05.Cor/{sample}/{sample}_consensus.fasta")
-#     threads: THREADS["high"]
-#     shell:
-#         """
-#         medaka_consensus -i {input.r1} -d {input.ref} \
-#             -o {output.out_dir} -t {threads} -m {MEDAKA_MODEL}
-#         """
-
-# # ========== QUAST 评估 ==========
-# rule quast:
-#     input:
-#         fasta=lambda w: os.path.join(OUT_PATH,f"05.Cor/{w.sample}/racon_round{int(w.round)}.fasta")
-#     output:
-#         directory(os.path.join(OUT_PATH,"05.Cor/{sample}/quast_round{round}"))
-#     threads: THREADS["high"]
-#     shell:
-#         """
-#         quast {input.fasta} -o {output} -t {threads}
-#         """
-
-rule minimap2_target:
+# ========== QUAST 评估 ==========
+rule quast:
     input:
-        r1=os.path.join(OUT_PATH,"01.QC/{sample}/{sample}.clean.fastq.gz"),
+        fasta=lambda w: os.path.join(OUT_PATH,f"05.Cor/{w.sample}/racon_round{int(w.round)}.fasta")
+    output:
+        directory(os.path.join(OUT_PATH,"05.Cor/{sample}/quast_round{round}"))
+    threads: THREADS["high"]
+    shell:
+        """
+        quast {input.fasta} -o {output} -t {threads}
+        """
+
+rule re_mapping:
+    input:
+        # r1=os.path.join(OUT_PATH,"01.QC/{sample}/{sample}.clean.fastq.gz"),
+        r1=os.path.join(OUT_PATH,"03.Target/{sample}/{sample}_FMR1.fq"),
         contig=lambda w:os.path.join(OUT_PATH,f"05.Cor/{w.sample}/racon_round{ITER}.fasta")
     output:
         bam=os.path.join(OUT_PATH,"06.Alle/{sample}/{sample}.bam"),
@@ -142,7 +132,7 @@ rule minimap2_target:
         samtools faidx {input.contig}
         """
 
-rule haplotype_assembly:
+rule haplotype:
     input:
         contig=lambda w:os.path.join(OUT_PATH,f"05.Cor/{w.sample}/racon_round{ITER}.fasta"),
         bam=os.path.join(OUT_PATH,"06.Alle/{sample}/{sample}.bam"),
@@ -155,7 +145,7 @@ rule haplotype_assembly:
         longshot --bam {input.bam} --ref {input.contig} --out {output.vcf} --out_bam {output.hp_bam}
         """
 
-rule polish2:
+rule re_polish:
     input:
         contig=lambda w:os.path.join(OUT_PATH,f"05.Cor/{w.sample}/racon_round{ITER}.fasta"),
         hp_bam=os.path.join(OUT_PATH,"06.Alle/{sample}/{sample}.hp.bam"),
@@ -171,59 +161,42 @@ rule polish2:
         racon -t {threads} {output.fq} {output.paf} {input.contig} > {output.allele}
         """
 
-# ========== 修改中 ==========
-rule extract:
+rule str_loacte:
     input:
-        r1=lambda w: os.path.join(OUT_PATH,f"05.Cor/{w.sample}/racon_round{int(w.round)}.fasta"),
-        ref_file=config["ref_path"],
-        bed_file = os.path.join(OUT_PATH,"FMR1.bed"),
+        allele=os.path.join(OUT_PATH,"06.Alle/{sample}/{sample}.allele{hap}.fa"),
+        flank_file=config["flank_file"],
     output:
-        bam=os.path.join(OUT_PATH,"05.Cor/{sample}/map_round{round}.bam"),
-        tar_bam=os.path.join(OUT_PATH,"05.Cor/{sample}/map_round{round}_FMR1.bam"),
+        bam=os.path.join(OUT_PATH,"06.Alle/{sample}/{sample}.allele{hap}.bam"),
     threads: THREADS["high"]
     params:
         chr=config["chr"]
     shell:
         r"""
-        set -euo pipefail
-        minimap2 -t {threads} -ax asm20 {input.ref_file} {input.r1} | samtools sort -o {output.bam}
+        minimap2 -t {threads} -ax sr {input.allele} {input.flank_file} | samtools sort -o {output.bam}
         samtools index {output.bam}
-        samtools view -@ {threads} -b -L {input.bed_file} {output.bam} > {output.tar_bam}
-        samtools index {output.tar_bam}
         """
 
-rule target_fq:
+rule str_count:
     input:
-        r1=lambda w: os.path.join(OUT_PATH,f"05.Cor/{w.sample}/racon_round{int(w.round)}.fasta"),
-        tar_bam=lambda w:os.path.join(OUT_PATH,f"05.Cor/{w.sample}/map_round{int(w.round)}_FMR1.bam"),
+        bam=os.path.join(OUT_PATH,"06.Alle/{sample}/{sample}.allele{hap}.bam"),
+        allele=os.path.join(OUT_PATH,"06.Alle/{sample}/{sample}.allele{hap}.fa"),
     output:
-        fasta=os.path.join(OUT_PATH,"05.Cor/{sample}/round{round}_FMR1.fasta"),
-    threads: THREADS["high"]
+        out_summary=os.path.join(OUT_PATH,"07.Summary/{sample}/{sample}_{hap}_STR_summary.tsv"),
     params:
-        chr=config["chr"]
+        out_dir=directory(os.path.join(OUT_PATH,"07.Summary/{sample}")),
+        no="{sample}_{hap}"
     shell:
         r"""
-        min_start=$(samtools view -@ {threads} {input.tar_bam} | cut -f 6 | cut -d 'H' -f1 | sort -n | head -n1)
-        start=$((min_start - 50000))
-        end=$((min_start + 90000))
-        if [ $start -lt 1 ]; then start=1; fi
-        seqkit faidx {input.r1} {params.chr}:${{start}}-${{end}} | seqtk seq -A > {output.fasta}
+        python STR.py --bam {input.bam} --contig {input.allele} --sample {params.no} --out_dir {params.out_dir} 
         """
 
-rule STR_count:
+rule merge:
     input:
-        bam=os.path.join(OUT_PATH,"03.Target/{sample}/{sample}_FMR1.bam"),
+        expand(os.path.join(OUT_PATH,"07.Summary/{sample}/{sample}_{hap}_STR_summary.tsv"), sample=SAMPLES,hap=HAPS)
     output:
-        out_dir=directory(os.path.join(OUT_PATH,"04.STR/{sample}")),
-        # hist=f"{outdir}/{sample}.FMR1_CGG_hist.png",
-        # report=f"{outdir}/{sample}_FMR1_CGG_report.txt"
-    params:
-        chr=config["chr"],
-        start = config["fmr1_start"] - config.get("pad_bp",50000),
-        end = config["fmr1_start"] + config.get("pad_bp",50000),
-    shell:
-        """
-        python STR.py --bam {input.bam} \
-            --chr {params.chr} --start {params.start} --end {params.end} \
-            --out_dir {output.out_dir}
-        """
+        os.path.join(OUT_PATH,"07.Summary/STR_summary.tsv")
+    run:
+        import pandas as pd
+        dfs = [pd.read_csv(f, sep="\t") for f in input]
+        df_all = pd.concat(dfs, ignore_index=True)
+        df_all.to_csv(output[0], sep="\t", index=False)
