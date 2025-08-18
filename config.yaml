@@ -1,6 +1,6 @@
-samples: ["SRR17138565","SRR17138627","SRR17138630","SRR17138637","SRR17138638", "SRR17138639","SRR17138640"]
-in_path: "./data"
-out_path: "./results"
+samples: ["SRR17138637","SRR17138639"]
+in_path: "./raw_data/"
+out_path: "./results/"
 
 threads:
   normal: 16

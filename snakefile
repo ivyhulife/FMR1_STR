@@ -19,9 +19,8 @@ rule all:
         # expand(os.path.join(OUT_PATH,"04.Assembly/{sample}/flye/assembly.fasta"), sample=SAMPLES),
         # expand(os.path.join(OUT_PATH,"05.Cor/{sample}/racon_round{round}.fasta"),round=[ITER], sample=SAMPLES),
         expand(os.path.join(OUT_PATH,"05.Cor/{sample}/quast_round{round}"),round=[ITER], sample=SAMPLES),
-        # expand(os.path.join(OUT_PATH,"06.Alle/{sample}/{sample}.allele{hap}.bam"),sample=SAMPLES,hap=HAPS),
+        expand(os.path.join(OUT_PATH,"06.Alle/{sample}/{sample}.allele{hap}.bam"),sample=SAMPLES,hap=HAPS),
         os.path.join(OUT_PATH,"07.Summary/STR_summary.tsv"),
-
 
 rule create_bed:
     output:

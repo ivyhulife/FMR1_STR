@@ -1,7 +1,8 @@
 # FMR1_STR pipeline
 
 - update at     2025-08-18 
-- author        Hu Qiaoli  
+- author        Hu Qiaoli 
+- version       0.1
 
 ## 1. Introduction
 The **FMR1_STR pipeline** is designed to analyze **FMR1 gene 5’UTR CGG repeat expansions** which are associated with **Fragile X Syndrome(FXS)** using **Nanopore Technology long reads**.  
@@ -28,34 +29,36 @@ We recommend running this pipeline inside a **docker** or **Apptainer** containe
 | **racon**     | 1.5.0       | Contig polishing                           |
 | **samtools**  | 1.21        | Alignment manipulation                     |
 | **snakemake** | 7.32.4        | Workflow management                        |
-| **Python3**   | 3.10.16      | Workflow scripts (numpy, pandas, argparse) |
+| **Python3**   | 3.10.16      | Workflow scripts (numpy, pandas, argparse,pysam,biopython) |
 
 ## 3. Script Directory Structure
 ```
 FMR1_STR/
 ├── config.yaml                 # Global configuration for Snakemake
+├── demo_results.png            # The results of demo reads
 ├── Dockerfile                  # Docker image definition
 ├── lib/                        
-│   ├── STR.py                  # STR repeat detection and annotation
-│   ├── hg38_chrXY.*            # Reference (hg38 chromosome X subset)
 │   ├── fmr1_flanks.fa          # Flanking sequences for STR localization
-├── snakefile                   # Snakemake pipeline definition
+│   ├── hg38_chrXY.*            # Reference (hg38 chromosome X subset)
+│   ├── STR.py                  # STR repeat detection and annotation
 ├── readme.md                   # Project documentation
+├── snakefile                   # Snakemake pipeline definition
 └── workflow.png                # Workflow schematic
 ```
 
 ## 4. Usage
-1. Edit config.yaml before running the pipeline:
+### 1. Edit **config.yaml** before running the pipeline:
 ```yaml
-samples: ["sample1", "sample2"]   # List of sample IDs
-in_path: "./raw_reads/"           # Directory containing input FASTQ files
-out_path: "./output/"             # Output directory     
+samples:  ["SRR17138637","SRR17138639"]   # List of sample IDs
+in_path: "./raw_data/"           # Directory containing input FASTQ files
+out_path: "./results/"             # Output directory     
+
 threads:
   normal: 16                      #  recommended for small or lightweight steps
   high: 60                        # recommended for computationally intensive step
 
 ```
-2. Running the Pipeline via snakemeke :
+### 2. Running the Pipeline via snakemeke :
 ```
 snakemake -np                   ## Dry-run (no execution, check DAG)
 snakemake -j ${core_num} -p     ## Full execution
@@ -65,6 +68,11 @@ docker build -t fmr1_str:latest .
 docker run -itv $(pwd):/data fmr1_str:latest  snakemake -np 
 docker run -itv $(pwd):/data fmr1_str:latest  snakemake -j ${core_num} -p 
 ```
+### 3. Workflow
+![alt text](workflow.png)
+
+### 4. STR_summary report in ./output/07.Summary
+![alt text](demo_results.png)
 
 ## 5. Output Directory Structure
 ```
@@ -85,6 +93,3 @@ docker run -itv $(pwd):/data fmr1_str:latest  snakemake -j ${core_num} -p
 - The workflow is modular: each step can be executed independently by specifying the rule name in Snakemake.
 
 - Multi-sample runs can be managed by Snakemake batch mode.
-
-## 7. Workflow
-![alt text](workflow.png)
