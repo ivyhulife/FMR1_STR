@@ -20,7 +20,7 @@ rule all:
         # expand(os.path.join(OUT_PATH,"05.Cor/{sample}/racon_round{round}.fasta"),round=[ITER], sample=SAMPLES),
         expand(os.path.join(OUT_PATH,"05.Cor/{sample}/quast_round{round}"),round=[ITER], sample=SAMPLES),
         expand(os.path.join(OUT_PATH,"06.Alle/{sample}/{sample}.allele{hap}.bam"),sample=SAMPLES,hap=HAPS),
-        os.path.join(OUT_PATH,"07.Summary/STR_summary.tsv"),
+        os.path.join(OUT_PATH,"08.Summary/STR_summary.tsv"),
 
 rule create_bed:
     output:
@@ -175,27 +175,51 @@ rule str_loacte:
         samtools index {output.bam}
         """
 
+rule trf:
+    input:
+        allele=os.path.join(OUT_PATH,"06.Alle/{sample}/{sample}.allele{hap}.fa"),
+        flank_file=config["flank_file"],
+    output:
+        tsv=os.path.join(OUT_PATH,"07.TRF/{sample}.allele{hap}.trf.tsv"),
+    params:
+        workdir=os.path.join(OUT_PATH,"07.TRF/"),
+        out_bat="{sample}.allele{hap}.fa.2.5.7.80.10.50.2000.dat",
+        no="{sample}_{hap}",
+        src_path=config["src_path"],
+    shell:
+        # trf {input.allele} 2 5 7 80 10 50 2000 -d -h
+        """
+        python {params.src_path}/TRF.py -i {params.out_bat} -o {output.tsv} --sample {params.no} 
+        """
+
 rule str_count:
     input:
         bam=os.path.join(OUT_PATH,"06.Alle/{sample}/{sample}.allele{hap}.bam"),
         allele=os.path.join(OUT_PATH,"06.Alle/{sample}/{sample}.allele{hap}.fa"),
     output:
-        out_summary=os.path.join(OUT_PATH,"07.Summary/{sample}/{sample}_{hap}_STR_summary.tsv"),
+        out_summary=os.path.join(OUT_PATH,"08.Summary/{sample}/{sample}_{hap}_STR_summary.tsv"),
     params:
-        out_dir=directory(os.path.join(OUT_PATH,"07.Summary/{sample}")),
-        no="{sample}_{hap}"
+        out_dir=directory(os.path.join(OUT_PATH,"08.Summary/{sample}")),
+        no="{sample}_{hap}",
+        src_path=config["src_path"],
     shell:
         r"""
-        python ./lib/STR.py --bam {input.bam} --contig {input.allele} --sample {params.no} --out_dir {params.out_dir} 
+        python {params.src_path}/STR.py --bam {input.bam} --contig {input.allele} --sample {params.no} --out_dir {params.out_dir} 
         """
 
 rule merge:
     input:
-        expand(os.path.join(OUT_PATH,"07.Summary/{sample}/{sample}_{hap}_STR_summary.tsv"), sample=SAMPLES,hap=HAPS)
+        str=expand(os.path.join(OUT_PATH,"08.Summary/{sample}/{sample}_{hap}_STR_summary.tsv"), sample=SAMPLES,hap=HAPS),
+        trf=expand(os.path.join(OUT_PATH,"07.TRF/{sample}.allele{hap}.trf.tsv"), sample=SAMPLES,hap=HAPS),
     output:
-        os.path.join(OUT_PATH,"07.Summary/STR_summary.tsv")
+        str=os.path.join(OUT_PATH,"08.Summary/STR_summary.tsv"),
+        trf=os.path.join(OUT_PATH,"08.Summary/TRF_summary.tsv")
     run:
         import pandas as pd
-        dfs = [pd.read_csv(f, sep="\t") for f in input]
-        df_all = pd.concat(dfs, ignore_index=True)
-        df_all.to_csv(output[0], sep="\t", index=False)
+        dfs_str = [pd.read_csv(f, sep="\t") for f in input.str]
+        df_all_str = pd.concat(dfs_str, ignore_index=True)
+        df_all_str.to_csv(output.str, sep="\t", index=False)
+        
+        dfs_trf = [pd.read_csv(f, sep="\t") for f in input.trf]
+        df_all_trf = pd.concat(dfs_trf, ignore_index=True)
+        df_all_trf.to_csv(output.trf, sep="\t", index=False)

@@ -30,7 +30,7 @@ def get_str_region(bam_file):
                              "-" if aln.is_reverse else "+")
 
     bam.close()
-    # 如果都没比对上，返回 None
+    # 如果都没比对上
     if coords["left_flank"] is None and coords["right_flank"] is None:
         return None
     return coords
@@ -52,8 +52,7 @@ def get_str_seq(coords,contig_fasta):
         print("Warning: Left and right flanks map to different contigs.")
         contig_name=left_flank[0]
         contig_seq=get_contig_seq(contig_fasta, contig_name)
-        # 取左侧翼所在的contig，默认1000bp窗口
-        str_start = left_flank[2]
+        str_start = left_flank[2] # 取左侧翼所在的contig，默认1000bp窗口
         str_end = min(len(contig_seq), str_start+1000)
         str_seq=contig_seq[str_start:str_end]
     elif left_flank and not right_flank:
@@ -76,7 +75,7 @@ def get_str_seq(coords,contig_fasta):
 # -----------------------
 # CGG repeat检测函数（允许AGG/CAG中断、1-2 bp mismatch）
 # -----------------------
-def count_cgg_repeat(seq, max_mismatch=2, allow_agg=True):
+def count_cgg_repeat(seq, max_mismatch=1, allow_agg=True):
     if seq is None or len(seq) < 3:
         return 0, ""
     i = 0
@@ -108,7 +107,7 @@ def main():
     parser = argparse.ArgumentParser(description="Scan BAM for CGG repeat counts")
     parser.add_argument("-b", "--bam", required=True, help="Input BAM file")
     parser.add_argument("--contig", required=True, help="contig fasta file")
-    parser.add_argument("--max_mm", type=int, default=2)
+    parser.add_argument("--max_mm", type=int, default=1)
     parser.add_argument("--out_dir", required=True,help="out put directory")
     parser.add_argument("--sample", required=True,help="sampleID")
     args = parser.parse_args()
@@ -127,12 +126,30 @@ def main():
         str_motifs = rev_str_motifs = ""
         result = ["NA", "NA"]
 
-    df = pd.DataFrame(
-        [[args.sample,contig_name, str_start, str_end, 
-          len(str_seq) if str_seq else 0 , result,
-        repeat_count, rev_repeat_count, str_motifs,rev_str_motifs, str_seq]],
-        columns=["sampleID","contig","STR_start","STR_end","str_len","result",
-                "repeat_count","rev_repeat_count", "motifs","rev_motifs","STR_sequence"])
+    df = pd.DataFrame([[
+        args.sample,
+        contig_name, 
+        str_start, str_end, 
+        len(str_seq) if str_seq else 0 , 
+        result,
+        repeat_count, 
+        rev_repeat_count, 
+        str_motifs,
+        rev_str_motifs, 
+        str_seq]],
+        columns=[
+            "sampleID",
+            "contig",
+            "STR_start",
+            "STR_end",
+            "str_len",
+            "result",
+            "repeat_count",
+            "rev_repeat_count", 
+            "motifs",
+            "rev_motifs",
+            "STR_sequence"
+            ])
     df.to_csv(f"{args.out_dir}/{args.sample}_STR_summary.tsv", sep="\t", index=False)
 
 if __name__ == "__main__":

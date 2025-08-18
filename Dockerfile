@@ -7,7 +7,7 @@ RUN mkdir -p $SETUPDIR
 WORKDIR $SETUPDIR
 
 RUN apt-get update && apt-get -y install bedtools samtools \
-    && mamba install -y snakemake racon minimap2 longshot flye filtlong \
+    && mamba install -y snakemake racon minimap2 longshot flye filtlong trf \
     && mamba create -n nanoplot -c bioconda -c conda-forge nanoplot -y
     && pip install --upgrade pip && pip install --no-cache-dir -U quast numpy pandas argparse pysam biopython
 RUN apt-get autoclean clean && rm -rf $SETUPDIR /var/lib/apt/lists/* /var/tmp/* /tmp/* /root/.cache/pip/*

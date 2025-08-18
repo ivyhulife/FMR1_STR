@@ -1,6 +1,7 @@
 samples: ["SRR17138637","SRR17138639"]
 in_path: "./raw_data/"
 out_path: "./results/"
+src_path: "./src/"
 
 threads:
   normal: 16
