@@ -47,7 +47,7 @@ FMR1_STR/
 ```
 
 ## 4. Usage
-### 1. Edit **config.yaml** before running the pipeline:
+### 4.1. Edit **config.yaml** before running the pipeline:
 ```yaml
 samples:  ["SRR17138637","SRR17138639"]   # List of sample IDs
 in_path: "./raw_data/"           # Directory containing input FASTQ files
@@ -58,7 +58,7 @@ threads:
   high: 60                        # recommended for computationally intensive step
 
 ```
-### 2. Running the Pipeline via snakemeke :
+### 4.2. Running the Pipeline via snakemeke :
 ```
 snakemake -np                   ## Dry-run (no execution, check DAG)
 snakemake -j ${core_num} -p     ## Full execution
@@ -68,10 +68,10 @@ docker build -t fmr1_str:latest .
 docker run -itv $(pwd):/data fmr1_str:latest  snakemake -np 
 docker run -itv $(pwd):/data fmr1_str:latest  snakemake -j ${core_num} -p 
 ```
-### 3. Workflow
+### 4.3. Workflow
 ![alt text](workflow.png)
 
-### 4. STR_summary report in ./output/07.Summary
+### 4.4. STR_summary report in ./output/07.Summary
 ![alt text](demo_results.png)
 
 ## 5. Output Directory Structure
